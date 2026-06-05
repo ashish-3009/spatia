@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 
-type Mode = 'sign-in' | 'sign-up' | 'magic-link';
+type Mode = 'sign-in' | 'sign-up' | 'magic-link' | 'forgot-password';
 
 /* ─── floating particle config ─── */
 const PARTICLE_COUNT = 24;
@@ -20,6 +20,7 @@ export function AuthForm() {
   const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
   const signUpWithPassword = useAuthStore((s) => s.signUpWithPassword);
   const signInWithMagicLink = useAuthStore((s) => s.signInWithMagicLink);
+  const resetPassword = useAuthStore((s) => s.resetPassword);
 
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
@@ -45,11 +46,13 @@ export function AuthForm() {
     let result: { error: string | null };
     if (mode === 'sign-in') result = await signInWithPassword(email, password);
     else if (mode === 'sign-up') result = await signUpWithPassword(email, password);
+    else if (mode === 'forgot-password') result = await resetPassword(email);
     else result = await signInWithMagicLink(email);
     setBusy(false);
     if (result.error) setError(result.error);
     else if (mode === 'magic-link') setInfo('Check your email for the magic link.');
     else if (mode === 'sign-up') setInfo('Account created. Check your email if confirmation is required.');
+    else if (mode === 'forgot-password') setInfo('Password reset link sent! Check your email inbox.');
   };
 
   const switchMode = (next: Mode) => {
@@ -62,16 +65,19 @@ export function AuthForm() {
     'sign-in': 'Welcome back',
     'sign-up': 'Create your space',
     'magic-link': 'Passwordless entry',
+    'forgot-password': 'Reset password',
   };
   const subtitles: Record<Mode, string> = {
     'sign-in': 'Sign in to explore your 3D photo spaces.',
     'sign-up': 'Join Spatia — immersive photo visualization.',
     'magic-link': 'We\'ll send a secure link to your inbox.',
+    'forgot-password': 'Enter your email to receive a reset link.',
   };
   const submitLabels: Record<Mode, string> = {
     'sign-in': 'Sign in',
     'sign-up': 'Create account',
     'magic-link': 'Send magic link',
+    'forgot-password': 'Send reset link',
   };
 
   return (
@@ -388,7 +394,7 @@ export function AuthForm() {
               </div>
 
               {/* Password */}
-              {mode !== 'magic-link' && (
+              {mode !== 'magic-link' && mode !== 'forgot-password' && (
                 <div className="auth-input-wrap">
                   <input
                     id="auth-password"
@@ -409,6 +415,20 @@ export function AuthForm() {
                     tabIndex={-1}
                   >
                     {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              )}
+
+              {/* Forgot password link (only on sign-in) */}
+              {mode === 'sign-in' && (
+                <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 16 }}>
+                  <button
+                    type="button"
+                    className="auth-link"
+                    onClick={() => switchMode('forgot-password')}
+                    style={{ fontSize: 12 }}
+                  >
+                    Forgot password?
                   </button>
                 </div>
               )}
@@ -450,6 +470,11 @@ export function AuthForm() {
               {mode === 'magic-link' && (
                 <button className="auth-link" onClick={() => switchMode('sign-in')}>
                   ← Use password instead
+                </button>
+              )}
+              {mode === 'forgot-password' && (
+                <button className="auth-link" onClick={() => switchMode('sign-in')}>
+                  ← Back to sign in
                 </button>
               )}
             </div>
