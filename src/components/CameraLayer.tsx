@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { FrostPanel } from './ui/FrostPanel';
 import { useHandStore } from '../store/handStore';
 import { handTracker } from '../lib/handTracking';
 
@@ -65,98 +64,192 @@ export function CameraLayer() {
   useEffect(() => {
     if (status !== 'active') return;
     setShowHint(true);
-    const t = setTimeout(() => setShowHint(false), 7000);
+    const t = setTimeout(() => setShowHint(false), 9000);
     return () => clearTimeout(t);
   }, [status]);
 
   return (
     <>
-      {/* Webcam fills the viewport; gray fallback shows when the camera is off. */}
+      <style>{`
+        .camera-fallback-dark {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          overflow: hidden;
+          background: #060608;
+          transition: background 0.5s ease;
+        }
+
+        .cam-status-panel {
+          position: fixed;
+          inset: 0;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+        .cam-status-card {
+          padding: 16px 24px;
+          background: rgba(20, 20, 24, 0.75);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0.02em;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .cam-status-spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255, 255, 255, 0.15);
+          border-top-color: var(--color-accent);
+          border-radius: 50%;
+          animation: cam-spin 0.65s linear infinite;
+        }
+        @keyframes cam-spin { to { transform: rotate(360deg); } }
+
+        .gesture-hud-panel {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 100;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          width: min(580px, 94vw);
+          pointer-events: none;
+        }
+
+        .gesture-cheat-sheet {
+          background: rgba(15, 15, 20, 0.75);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+          pointer-events: auto;
+          width: 100%;
+        }
+
+        .gesture-grid {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 8px 16px;
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.65);
+          line-height: 1.4;
+          max-height: 25vh;
+          overflow-y: auto;
+        }
+        .gesture-grid::-webkit-scrollbar {
+          width: 4px;
+        }
+        .gesture-grid::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 2px;
+        }
+
+        .gesture-icon-pill {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 6px;
+          padding: 2px 6px;
+          font-family: inherit;
+          color: var(--color-accent);
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .gesture-toggle-btn {
+          background: rgba(18, 18, 22, 0.8);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 8px 16px;
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 11px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          cursor: pointer;
+          pointer-events: auto;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .gesture-toggle-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: #fff;
+        }
+      `}</style>
+
+      {/* Webcam fills the viewport */}
       <div
         ref={bgRef}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 0,
-          overflow: 'hidden',
-          background: enabled ? '#111' : 'var(--surface, #ededed)',
-        }}
+        className="camera-fallback-dark"
       />
 
       {enabled && status !== 'active' && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <FrostPanel style={{ padding: '12px 18px' }}>
-            <span style={{ fontSize: 'var(--font-size-md)', color: 'var(--text-secondary)' }}>
-              {status === 'requesting-permission' && 'Asking for camera…'}
-              {status === 'loading-model' && 'Loading hand model…'}
+        <div className="cam-status-panel">
+          <div className="cam-status-card">
+            {status !== 'error' && <div className="cam-status-spinner" />}
+            <span>
+              {status === 'requesting-permission' && 'Accessing camera feed…'}
+              {status === 'loading-model' && 'Initializing hand engine…'}
               {status === 'off' && 'Camera off'}
               {status === 'error' && (errorMessage ?? '⚠ Camera unavailable')}
             </span>
-          </FrostPanel>
+          </div>
         </div>
       )}
 
       {enabled && status === 'active' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
+        <div className="gesture-hud-panel">
           {showHint && (
-            <FrostPanel style={{ padding: '12px 16px', maxWidth: 560 }}>
+            <div className="gesture-cheat-sheet">
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr',
-                  gap: '6px 12px',
-                  fontSize: 'var(--font-size-sm)',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.3,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#fff',
+                  marginBottom: 12,
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
                 }}
               >
+                Gesture cheat sheet
+              </div>
+              <div className="gesture-grid">
                 {GESTURES.map(([icon, label]) => (
                   <Fragment key={label}>
-                    <span style={{ whiteSpace: 'nowrap' }}>{icon}</span>
-                    <span>{label}</span>
+                    <div>
+                      <span className="gesture-icon-pill">{icon}</span>
+                    </div>
+                    <div style={{ alignSelf: 'center' }}>{label}</div>
                   </Fragment>
                 ))}
               </div>
-            </FrostPanel>
+            </div>
           )}
-          <FrostPanel style={{ padding: '6px 12px' }}>
-            <button
-              onClick={() => setShowHint((v) => !v)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-tertiary)',
-                fontSize: 'var(--font-size-sm)',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-              {showHint ? '✕ Hide gestures' : '✋ Gestures'}
-            </button>
-          </FrostPanel>
+          
+          <button
+            onClick={() => setShowHint((v) => !v)}
+            className="gesture-toggle-btn"
+          >
+            <span>{showHint ? '✕ Close details' : '✋ Show cheat sheet'}</span>
+          </button>
         </div>
       )}
     </>
