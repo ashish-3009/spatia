@@ -36,6 +36,25 @@ export function AuthForm() {
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true));
+
+    // Parse error description from URL hash or query if present (e.g. from expired Supabase link)
+    const hash = window.location.hash;
+    const search = window.location.search;
+    let errorMsg: string | null = null;
+
+    if (hash && hash.includes('error_description')) {
+      const params = new URLSearchParams(hash.substring(1));
+      errorMsg = params.get('error_description');
+    } else if (search && search.includes('error_description')) {
+      const params = new URLSearchParams(search);
+      errorMsg = params.get('error_description');
+    }
+
+    if (errorMsg) {
+      setError(decodeURIComponent(errorMsg.replace(/\+/g, ' ')));
+      // Clean the URL (remove hash/search parameters) so it doesn't reappear on reload
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
